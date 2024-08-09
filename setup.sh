@@ -54,6 +54,16 @@ if [[ -z $GIT_EMAIL ]]; then
     echo "Git email set to $GIT_EMAIL"
 fi
 
+if [[ ! $(gh --version) ]]; then
+
+    # Install GitHub CLI
+    brew install gh
+
+    # Authenticate with GitHub
+    gh auth login --git-protocol ssh --skip-ssh-key --web --scopes admin:ssh_signing_key,admin:public_key
+
+fi
+
 printf "✅ Git is installed\n"
 
 
