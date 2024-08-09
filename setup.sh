@@ -14,6 +14,16 @@ readonly SSH_CONFIG_FILE=$HOME/.ssh/config
 
 readonly GIT_REPO_DIR=$HOME/Development/test
 
+
+# ===========================================
+# ELEVATE SCRIPT TO SUDO
+# ===========================================
+
+if [ $EUID != 0 ]; then
+    sudo "$0" "$@"
+    exit $?
+fi
+
 # ===========================================
 # STEP 01. INSTALL HOMEBREW
 # ===========================================
@@ -86,7 +96,7 @@ printf "✅ ZSH is installed\n"
 
 if [[ ! -f $SSH_KEY_FILE ]]; then
     echo "Generating SSH key..."
-    ssh-keygen -t ed25519 -C $GIT_EMAIL -f $SSH_KEY_FILE -N ""
+    echo "ssh-keygen -t ed25519 -C $GIT_EMAIL -f $SSH_KEY_FILE -N \"\"" | bash
 fi
 
 echo "✅ SSH key generated"
