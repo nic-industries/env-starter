@@ -2,11 +2,6 @@
 
 { # this ensures the entire script is downloaded #
 
-if [[ "$EUID" -ne 0 ]]; then
-    sudo curl -o- https://raw.githubusercontent.com/nic-industries/env-starter/main/setup.sh | bash
-    exit 1
-fi
-
 set -u
 
 RED='\033[0;31m'
@@ -67,6 +62,12 @@ echo -e "${GRAY}Welcome to the NIC Web Development Team!${NC}"
 echo -e "${GRAY}This script will guide you through setting up your dev environment.${NC}"
 echo -e "${GRAY}Please follow the instructions carefully.${NC}"
 echo ""
+
+if [[ "$EUID" -ne 0 ]]; then
+    echo -e "${RED}This script must be run as root.${NC}"
+    exit 1
+fi
+
 press_any_key
 
 # ===========================================
