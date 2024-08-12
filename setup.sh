@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# We don't need return codes for "$(command)", only stdout is needed.
+# Allow `[[ -n "$(command)" ]]`, `func "$(command)"`, pipes, etc.
+# shellcheck disable=SC2312
+
+set -u
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+YELLOW='\033[0;33m'
+GRAY='\033[0;37m'
+NC='\033[0m'
+BOLD='\033[1m'
+
 readonly NODE_VERSION=20.16.0
 
 readonly PHP_VERSION=7.4
@@ -15,36 +29,73 @@ readonly SSH_CONFIG_FILE=$HOME/.ssh/config
 readonly GIT_REPO_DIR=$HOME/Development/test
 
 
-# ===========================================
-# ELEVATE SCRIPT TO SUDO
-# ===========================================
+# Extract the version number from the string
+# Usage: extract_version "git version 2.33.0"
+# Output: 2.33.0
+function extract_version {
+    local version_string=$1
+    local version_number=$(echo $version_string | grep -oE "([0-9]+)(\.[0-9]+)(\.[0-9]+)?")
+    # Return the first match
+    echo "v"$version_number | cut -d ' ' -f 1
+}
 
-if [ $EUID != 0 ]; then
-    sudo "$0" "$@"
-    exit $?
-fi
+function press_any_key {
+    read -n 1 -s -r -p "Press any key to continue ...";echo
+}
+
+
+clear
+echo ""
+echo -e "${BOLD}NIC Development Environment Setup${NC}"
+echo ""
+echo -e "${GRAY}Welcome to the NIC Web Development Team!${NC}"
+echo -e "${GRAY}This script will guide you through setting up your dev environment.${NC}"
+echo -e "${GRAY}Please follow the instructions carefully.${NC}"
+echo ""
+press_any_key
 
 # ===========================================
 # STEP 01. INSTALL HOMEBREW
 # ===========================================
 
+echo ""
+echo "==============================================="
+echo "Step 01. Homebrew"
+echo "==============================================="
+echo ""
+
+echo -ne "🕒 ${YELLOW}Checking if Homebrew is installed ...${NC}"\\r
+sleep 2
+
 # Check if Homebrew is installed
-if [[ ! $(brew --version) ]]; then
+if [[ ! $(which brew) ]]; then
+    # Homebrew is not installed
+    echo -ne "🟡 ${YELLOW}Installing Homebrew...${NC}"\\r
     # Install Homebrew
     echo "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" | bash
+    echo -e "🟢 ${GREEN}Homebrew $(extract_version "$(brew --version)") has been installed${NC}"
+else
+    # Homebrew is already installed
+    echo -e "🔵 ${BLUE}Homebrew is already installed${NC}${GRAY} ...... $(extract_version "$(brew --version)")${NC}"
 fi
-
-printf "✅ Homebrew is installed\n"
 
 
 # ===========================================
 # STEP 02. INSTALL AND CONFIGURE GIT
 # ===========================================
+echo -ne "🕒 ${YELLOW}Checking if Git is installed ...${NC}"\\r
+sleep 2
 
 # Check if Git is installed
-if [[ ! $(git --version) ]]; then
+if [[ ! $(which git) ]]; then
+    # Git is not installed
+    echo -ne "🟡 ${YELLOW}Installing Git...${NC}"\\r
     # Install Git
     brew install git
+    echo -e "🟢 ${GREEN}Git installed successfully${NC}"
+else
+    # Git is already installed
+    echo -e "🔵 ${BLUE}Git is already installed${NC}${GRAY} ........... $(extract_version "$(git --version)")${NC}"
 fi
 
 GIT_USERNAME=$(git config user.name)
@@ -64,7 +115,7 @@ if [[ -z $GIT_EMAIL ]]; then
     echo "Git email set to $GIT_EMAIL"
 fi
 
-if [[ ! $(gh --version) ]]; then
+if [[ ! $(which gh) ]]; then
 
     # Install GitHub CLI
     brew install gh
@@ -74,37 +125,52 @@ if [[ ! $(gh --version) ]]; then
 
 fi
 
-printf "✅ Git is installed\n"
-
 
 # ===========================================
 # STEP 03. INSTALL AND CONFIGURE ZSH
 # ===========================================
+echo -ne "🕒 ${YELLOW}Checking if ZSH is installed ...${NC}"\\r
+sleep 2
 
 # Check if Zsh is installed
-if [[ ! $(zsh --version) ]]; then
+if [[ ! $(which zsh) ]]; then
+    # Zsh is not installed
+    echo -ne "🟡 ${YELLOW}Installing Zsh...${NC}"\\r
     # Install Zsh
     brew install zsh
+    echo -e "🟢 ${GREEN}Zsh installed successfully${NC}"
+else
+    # Zsh is already installed
+    echo -e "🔵 ${BLUE}ZSH is already installed${NC}${GRAY} .............. $(extract_version "$(zsh --version)")${NC}"
 fi
-
-printf "✅ ZSH is installed\n"
 
 
 # ===========================================
 # STEP 04. GENERATE SSH KEY & CONFIGURE SSH
 # ===========================================
 
-if [[ ! -f $SSH_KEY_FILE ]]; then
-    echo "Generating SSH key..."
-    echo "ssh-keygen -t ed25519 -C $GIT_EMAIL -f $SSH_KEY_FILE -N \"\"" | bash
-fi
+# echo ""
+# echo "==============================================="
+# echo "Step 04. SSH"
+# echo "==============================================="
+# echo ""
 
-echo "✅ SSH key generated"
+# # Check if SSH key file exists
+# if [[ ! -f $SSH_KEY_FILE ]]; then
+#     # SSH key file does not exist
+#     echo -ne "🟡 ${YELLOW}Generating SSH key file...${NC}"\\r
+#     # echo "ssh-keygen -t ed25519 -C $GIT_EMAIL -f $SSH_KEY_FILE -N \"\"" | bash
+#     sleep 2
+#     echo -e "🟢 ${GREEN}SSH key generated successfully${NC}"
+# else
+#     # SSH key file already exists
+#     echo -e "🔵 ${BLUE}SSH key file already exists${NC}${GRAY} ...... $SSH_KEY_FILE${NC}"
+# fi
 
 # Create SSH config file if it doesn't exist
-if [[ ! -f $SSH_CONFIG_FILE ]]; then
-    touch $SSH_CONFIG_FILE
-fi
+# if [[ ! -f $SSH_CONFIG_FILE ]]; then
+#     touch $SSH_CONFIG_FILE
+# fi
 
 
 # ===========================================
@@ -114,7 +180,12 @@ fi
 # Check if NVM is installed
 if [[ ! -d $HOME/.nvm ]]; then
 
+    # NVM is not installed
+    echo -ne "🟡 ${YELLOW}Installing NVM...${NC}"\\r
+
+    # Install NVM
     echo "$(curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh)" | bash
+    echo -e "🟢 ${GREEN}SSH key generated successfully${NC}"
 
     echo "" > $ZSH_CONFIG_FILE
     echo "# ====================================" >> $ZSH_CONFIG_FILE
@@ -127,6 +198,12 @@ if [[ ! -d $HOME/.nvm ]]; then
 
     source $ZSH_CONFIG_FILE
 
+else
+
+    # NVM is already installed
+    source $HOME/.nvm/nvm.sh
+    echo -e "🔵 ${BLUE}NVM is already installed${NC}${GRAY} ........... $(extract_version "$(nvm --version)")${NC}"
+
 fi
 
 source $HOME/.nvm/nvm.sh
@@ -138,16 +215,14 @@ if [[ $CURRENT_NODE_VERSION != "v${NODE_VERSION}" ]]; then
     nvm use ${NODE_VERSION}
 fi
 
-printf "✅ NVM is installed\n"
-
 
 # ===========================================
 # STEP 06. INSTALL & CONFIGURE PNPM
 # ===========================================
 
 # Check if PNPM is installed
-if [[ ! $(pnpm --version) ]]; then
-    npm install -g pnpm
+if [[ ! $(which pnpm) ]]; then
+    brew install pnpm
 fi
 
 
@@ -156,10 +231,12 @@ fi
 # ===========================================
 
 # Check if PHP is installed
-if [[ ! $(php --version) ]]; then
+if [[ ! $(which php) ]]; then
     brew tap shivammathur/php
     brew install shivammathur/php/php@${PHP_VERSION}
     brew link --overwrite --force shivammathur/php/php@${PHP_VERSION}
+else
+    echo -e "🔵 ${BLUE}PHP is already installed${NC}${GRAY} ........... $(extract_version "$(php --version)")${NC}"
 fi
 
 # Check if PCRE2 is installed
@@ -183,7 +260,7 @@ fi
 # ===========================================
 
 # Check if Composer is installed
-if [[ ! $(composer --version) ]]; then
+if [[ ! $(which composer) ]]; then
     brew install composer
 fi
 
@@ -193,7 +270,7 @@ fi
 # ===========================================
 
 # Check if Docker is installed
-if [[ ! $(docker --version) ]]; then
+if [[ ! $(which docker) ]]; then
     brew install --cask docker
 fi
 
